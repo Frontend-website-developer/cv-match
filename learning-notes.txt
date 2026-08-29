@@ -1,0 +1,314 @@
+CV MATCH — LEARNING NOTES
+==========================
+(Running record of everything explained in this session. Keep adding to this
+file as we go.)
+
+
+PROJECT GOAL
+------------
+Build a CV/JD matcher app:
+- User pastes their CV and a Job Description (JD).
+- App sends both to Claude (Anthropic AI) with an API key.
+- App shows back: match percentage, what matches, what's missing.
+
+
+THE BIG PICTURE — DATA FLOW
+----------------------------
+
+  Browser (page.tsx)                Server (route.ts)              Anthropic
+  +------------------+   fetch()   +------------------+   API call +---------+
+  | Textarea: CV      | ---------> | POST /api/match   | ---------> | Claude  |
+  | Textarea: JD       |           | reads {cv, jd}    | <--------- | Opus 5  |
+  | Submit button       | <------- | returns JSON       |           +---------+
+  | Shows result          | JSON   | (match %, skills)   |
+  +------------------+           +------------------+
+
+Two files, two different worlds:
+
+1. src/app/page.tsx
+   - Runs in the BROWSER.
+   - This is a "Client Component" (needs "use client" at the top because it
+     uses state/events). Plain React, same as what you already know.
+
+2. src/app/api/match/route.ts
+   - Runs ONLY on the server, in Next.js App Router.
+   - Never ships to the browser. This is the ONLY safe place to keep the
+     Anthropic API key.
+   - RULE #1: secrets stay server-side. If you called the Claude API
+     directly from page.tsx, your API key would be visible in browser
+     devtools to anyone who opens the site.
+
+
+SETUP DONE (tooling, not a learning step)
+------------------------------------------
+- Installed packages: @anthropic-ai/sdk, zod
+    (zod = library for defining data shapes / validation — used later to
+    describe the exact JSON structure we want Claude to return)
+- Created .env.local with:
+      ANTHROPIC_API_KEY=paste-your-key-here
+  -> Paste your real Anthropic API key in place of the placeholder.
+  -> .env* is already in .gitignore, so this file will never get committed
+     to git. That's important — never commit real API keys.
+
+
+LESSON 1 — THE FRONTEND FORM (src/app/page.tsx)
+-------------------------------------------------
+
+Concept 1: "use client" directive
+  Next.js App Router components are Server Components BY DEFAULT (they
+  render on the server, can't use useState/onClick/etc). Since our form
+  needs interactivity, the very first line of the file must be:
+
+      "use client";
+
+Concept 2: Controlled inputs with state
+  Same pattern as plain React:
+
+      const [cv, setCv] = useState("");
+
+  Two textareas (CV text, JD text), each backed by its own state variable.
+      value={cv}
+      onChange={(e) => setCv(e.target.value)}
+
+Concept 3: TypeScript on event handlers
+  In a .tsx file, an onChange handler's event type is:
+      React.ChangeEvent<HTMLTextAreaElement>
+  You can let TypeScript INFER this automatically when the handler is
+  written inline:
+      onChange={(e) => setCv(e.target.value)}   // no annotation needed
+  Only annotate explicitly if you pull the handler out into its own named
+  function.
+
+Concept 4: Async submit + fetch
+  No <form onSubmit> needed — just a button onClick that calls an async
+  function:
+
+      async function handleSubmit() {
+        setLoading(true);
+        const res = await fetch("/api/match", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cv, jd }),
+        });
+        const data = await res.json();
+        // ...
+      }
+
+TASK GIVEN (lesson 1):
+  In page.tsx, replace the static content with a client component that has:
+    - State: cv (string), jd (string), loading (boolean),
+      result (start as `any` or null — real type comes after lesson 2),
+      error (string or null)
+    - Two labeled <textarea>s bound to cv and jd
+    - A submit button, disabled while loading, calling an async handler
+      that POSTs to /api/match
+    - Below the form: show "Analyzing..." while loading, an error message
+      if error is set, otherwise nothing yet (real result rendering comes
+      in lesson 2)
+
+STATUS: waiting on you to write this and share it for review.
+
+Q&A: "Should I make a new component for this?"
+  Answer: NOT YET. Keep it inside page.tsx for now — one form, two
+  textareas, one button is small enough to live in a single file.
+  Splitting into components before you need to is "premature
+  abstraction" — extra files to jump between with no real benefit.
+
+  RULE OF THUMB: split a piece of JSX into its own component when it
+  has its own clear responsibility AND is getting long (~50+ lines),
+  OR when it's reused somewhere else. Not before.
+
+  Concrete example for this project: once we render the match results
+  (lesson 3), if that result display gets visually complex (percentage
+  bar, matched/missing skill lists, summary), THEN pull it into a
+  ResultCard.tsx component — because at that point page.tsx would be
+  doing two distinct jobs (collecting input vs. displaying output).
+
+
+REVIEW — first draft of page.tsx
+-----------------------------------
+Good:
+  - "use client" at top, correct.
+  - useState for cv/jd, controlled textareas — correct pattern.
+  - Used <form onSubmit={...}> instead of a plain button onClick — this is
+    BETTER than what was originally suggested: it means pressing Enter in
+    a field also submits, not just clicking. Good instinct.
+
+Bug found: missing e.preventDefault()
+  A <form>'s default browser behavior on submit is to RELOAD THE PAGE.
+  Without stopping that, the page refreshes and wipes all state the
+  instant Submit is clicked — the fetch logic would never even get a
+  chance to run.
+  Fix:
+      const handleSubmit = function (e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+        // fetch logic goes here
+      };
+
+Convention note (not a bug):
+  setcv/setjd work, but convention is to capitalize after "set":
+  setCv, setJd (reads as "set Cv"). Worth the habit.
+
+Still missing (from the original task):
+  - loading (boolean) state
+  - result (any | null) state
+  - error (string | null) state
+  - the actual fetch("/api/match", ...) call inside handleSubmit, with
+    loading/error/result set around it
+
+STATUS: sent back for another pass — add the 3 missing state vars +
+fill in handleSubmit with the fetch pattern.
+
+
+REVIEW — second draft of page.tsx
+------------------------------------
+Good: e.preventDefault() added correctly, nice styling/placeholders added
+(good practical polish, not required but nice).
+
+BUG found — line "const res = await("/api/match", {...})":
+  Missing the function name! `await` is a keyword, not a function.
+  `await("/api/match", {...})` gets parsed as: JS comma expression
+  (a, b) evaluates to just the LAST value (the options object) — the URL
+  string is silently thrown away. Then await runs on that plain object
+  (not a promise), which just resolves immediately to itself.
+  Result: `res` ends up being the options object, NOT a Response.
+  `res.json()` would then throw at runtime (plain objects have no .json
+  method).
+  FIX: need the actual function name:
+      const res = await fetch("/api/match", { ... })
+
+Readability trap (not a bug): inside handleSubmit, `const data =
+await res.json()` shadows the outer `data` state variable from
+useState. Works fine (local const takes precedence inside the
+function) but confusing to read. Suggested fix: rename the STATE to
+`result`/`setResult` (matches what's needed for lesson 3 anyway),
+keep the local variable as `data`.
+
+Still missing (still from the original task):
+  - loading state — true before fetch, false after (success AND
+    failure)
+  - error state — currently nothing catches a failed fetch. Needs
+    try { ... } catch (err) { setError(...) } finally { setLoading(false) }
+
+STATUS: sent back again — fix the fetch() bug + add loading/error
+handling with try/catch/finally.
+
+
+REVIEW — third draft of page.tsx
+-----------------------------------
+Good: fetch() bug fixed, try/catch/finally structure correct, loading
+set true before fetch and false in finally (covers both success and
+failure paths), error state added, result state renamed (shadowing
+issue resolved).
+
+BUG found — setError("there is an error $err"):
+  Regular quotes ("..." or '...') NEVER interpolate variables in JS,
+  no matter what's inside them — `$err` here is just 3 literal
+  characters, not replaced with the real error.
+  To interpolate a variable into a string, need BACKTICKS + ${}:
+      setError(`there is an error: ${err}`)
+  This is called a "template literal".
+
+Still missing: nothing on the page actually RENDERS loading/error/
+result state yet. Needs, below the </form>:
+  - while loading -> show "Analyzing..."
+  - else if error is set -> show the error text
+  - else -> nothing yet (real result rendering is lesson 3)
+
+Heads-up for later (not urgent yet): `result` was initialized with
+useState("") so TS currently infers it as string. Once the API route
+exists and defines the real JSON shape, we'll change this to
+useState<MatchResult | null>(null) — a proper type instead of `any`.
+
+STATUS: sent back again — fix the template literal bug + add the
+conditional render block for loading/error.
+
+
+REVIEW — fourth draft of page.tsx
+------------------------------------
+Template literal fixed correctly. Loading/error render added and works
+(empty <p> tags when nothing to show — harmless, though
+`{loading && <p>Analyzing</p>}` is the cleaner idiom since it skips
+rendering the tag entirely — just a style nit, not required).
+
+One leftover from the original task: submit button should have
+disabled={loading} so it can't be double-clicked mid-request. Not
+blocking — add whenever.
+
+STATUS: LESSON 1 CONSIDERED DONE (functionally working). Moving to
+lesson 2.
+
+
+LESSON 2 — THE BACKEND API ROUTE (src/app/api/match/route.ts)
+-----------------------------------------------------------------
+File location: src/app/api/match/route.ts (create the api/match/
+folders inside src/app/).
+
+Concept 1: Route handler convention
+  A file literally named route.ts inside app/, exporting a function
+  named after the HTTP method:
+      export async function POST(request: Request) { ... }
+  Next.js wires POST /api/match to this automatically based on the
+  folder path.
+
+Concept 2: Reading the JSON body
+  Same Web API used on the frontend, reverse direction:
+      const { cv, jd } = await request.json();
+
+Concept 3: Defining the response SHAPE with zod (the new piece)
+  Instead of trusting the AI to freehand a response and hoping it's
+  parseable, describe the exact JSON shape wanted — the SDK then
+  FORCES Claude to match it.
+      import { z } from "zod";
+      const MatchResultSchema = z.object({
+        matchPercentage: z.number(),
+        summary: z.string(),
+        matchedSkills: z.array(z.string()),
+        missingSkills: z.array(z.string()),
+      });
+  (Exact fields are a design decision — pick what actually matters for
+  a CV matcher.)
+
+Concept 4: The Anthropic client
+      import Anthropic from "@anthropic-ai/sdk";
+      const client = new Anthropic(); // auto-reads ANTHROPIC_API_KEY from env
+
+Concept 5: The actual call — client.messages.parse (not .create), with
+  output_config.format pointing at the schema via zodOutputFormat:
+      import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+
+      const response = await client.messages.parse({
+        model: "claude-opus-5",
+        max_tokens: 4096,
+        messages: [{
+          role: "user",
+          content: `Compare this CV against this job description...\n\nCV:\n${cv}\n\nJob Description:\n${jd}`,
+        }],
+        output_config: { format: zodOutputFormat(MatchResultSchema) },
+      });
+  response.parsed_output is then a real object matching the schema —
+  no manual JSON parsing, no hoping Claude formatted it right.
+
+Concept 6: Return it
+      return Response.json(response.parsed_output);
+
+TASK GIVEN (lesson 2):
+  Write route.ts with a POST handler: read {cv, jd} from the request
+  -> define a zod schema (pick fields that matter) -> call
+  client.messages.parse with a prompt telling Claude what to do ->
+  return the parsed result as JSON. Skip error handling for now — get
+  the happy path working first, harden it after.
+
+STATUS: waiting on first draft.
+
+
+NEXT UP (not started yet)
+---------------------------
+Lesson 2: The backend API route (src/app/api/match/route.ts)
+  - Reading the request body (request.json())
+  - Defining a zod schema for the structured result (match %, matched
+    skills, missing skills, summary)
+  - Calling Claude (client.messages.parse with output_config.format)
+  - Returning Response.json(...)
+Lesson 3: Wiring frontend result state to the real API response type,
+  rendering the results nicely.
