@@ -19,9 +19,9 @@ type MatchResult = z.infer<typeof MatchResultSchema>;
 export default function Home() {
 
   function getBarColor(pct: number) {
-  if (pct < 50) return "bg-red-500";
-  if (pct < 70) return "bg-yellow-500";
-  return "bg-green-500";
+  if (pct < 50) return "bg-red-500 text-red-500";
+  if (pct < 70) return "bg-yellow-500 text-yellow-500";
+  return "bg-green-500 text-green-500";
 }
 
   const [result, setResult] = useState<MatchResult | null>(null);
@@ -83,42 +83,46 @@ const [error, setError] = useState("");
 
 
 {result &&
-<div className="text-left absolute z-99 top-[20%] bg-white rounded-md border border-[#fefefe] p-4 left-auto right-auto w-[90%] max-h-[500px] overflow-y-scroll text-[14px]">
-<div className="w-[300px]">
-  <div className={`h-4 rounded-full transition-all duration-1000 ease-out w-full bg-[#ccc]`}>
+<div className="text-left absolute z-99 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-md border border-[#fefefe] p-4 w-[70%] max-h-[500px] overflow-y-scroll text-[14px]">
+  <h2 className="text-[24px] font-bold">CV Matching Result</h2>
+<div className="flex gap-4 w-[200px] mt-3">
+  <div className={`h-3 rounded-full transition-all duration-1000 ease-out w-[60%] bg-[#ccc]`}>
   <div 
-    className={`h-4 rounded-full transition-all duration-1000 ease-out ${getBarColor(result.matchPercentage)}`}
+    className={`h-3 rounded-full transition-all duration-1000 ease-out ${getBarColor(result.matchPercentage)}`}
     style={{ width: `${barWidth}%` }}
-  /></div><p>{result.matchPercentage} %</p>
+  /></div><p className={`font-bold leading-[12px] ${getBarColor(result.matchPercentage)} bg-transparent!`}>{result.matchPercentage} %</p>
 </div>
 <h3 className="mt-4 text-left font-bold text-[20px]">Summary</h3>
 
 {result?.summary}
-
+<div className="md:flex">
+  <div>
 <h3 className="mt-4 text-left font-bold text-[20px]">Matching Skills</h3>
 <ul className="list-disc list-inside">
   {result?.matchedSkills.map((match) => {
     return (
-    <li className="flex items-center gap-1">
+    <li className="flex items-center gap-1 my-2">
   <Check className="w-4 h-4 text-green-600" /> {match}
 </li>
     )
   })}
 </ul>
-
+</div>
+<div>
 <h3 className="mt-4 text-left font-bold text-[20px]">Skills Which Are Lacking</h3>
 
 <ul className="list-disc list-inside">
   {
     result.missingSkills.map((match) => {
       return (
-      <li className="flex items-center gap-1">
+      <li className="flex items-center gap-1 my-2">
   <X className="w-4 h-4 text-red-600" /> {match}
 </li>
       )
     })
   }
 </ul>
+</div></div>
 </div>
 }
 
