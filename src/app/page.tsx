@@ -6,6 +6,8 @@ import { MatchResultSchema } from "@/lib/schemas";
 import { useState } from "react";
 import { useEffect } from "react";
 
+import { Check, X } from "lucide-react";
+
 type MatchResult = z.infer<typeof MatchResultSchema>;
 
 
@@ -62,7 +64,7 @@ const [error, setError] = useState("");
     
     
     <main className="min-h-screen items-center justify-center p-8">
-      <div className={loading ? "" : "fixed inset-0 z-50 bg-black/50 flex items-center justify-center"}></div>
+      <div className={result ? "fixed inset-0 z-50 bg-black/50 flex items-center justify-center" : ""}></div>
       <div className="text-center pt-4">
         <h1 className="text-4xl font-bold mb-4">CV Match</h1>
         <p className="text-lg text-gray-600">
@@ -81,7 +83,7 @@ const [error, setError] = useState("");
 
 
 {result &&
-<div className="text-left absolute z-99 top-[20%] bg-white rounded-md border border-[#fefefe] p-4 left-auto right-auto w-[90%] max-h-[500px] overflow-y-scroll">
+<div className="text-left absolute z-99 top-[20%] bg-white rounded-md border border-[#fefefe] p-4 left-auto right-auto w-[90%] max-h-[500px] overflow-y-scroll text-[14px]">
 <div className="w-[300px]">
   <div className={`h-4 rounded-full transition-all duration-1000 ease-out w-full bg-[#ccc]`}>
   <div 
@@ -89,23 +91,31 @@ const [error, setError] = useState("");
     style={{ width: `${barWidth}%` }}
   /></div><p>{result.matchPercentage} %</p>
 </div>
-<h3 className="mt-4 text-left font-bold text-[26px]">Summary</h3>
+<h3 className="mt-4 text-left font-bold text-[20px]">Summary</h3>
 
 {result?.summary}
 
-<h3 className="mt-4 text-left font-bold text-[26px]">Matching Skills</h3>
+<h3 className="mt-4 text-left font-bold text-[20px]">Matching Skills</h3>
 <ul className="list-disc list-inside">
   {result?.matchedSkills.map((match) => {
-    return <li>{match}</li>
+    return (
+    <li className="flex items-center gap-1">
+  <Check className="w-4 h-4 text-green-600" /> {match}
+</li>
+    )
   })}
 </ul>
 
-<h3 className="mt-4 text-left font-bold text-[26px]">Skills Which Are Lacking</h3>
+<h3 className="mt-4 text-left font-bold text-[20px]">Skills Which Are Lacking</h3>
 
 <ul className="list-disc list-inside">
   {
     result.missingSkills.map((match) => {
-      return <li>{match}</li>;
+      return (
+      <li className="flex items-center gap-1">
+  <X className="w-4 h-4 text-red-600" /> {match}
+</li>
+      )
     })
   }
 </ul>
