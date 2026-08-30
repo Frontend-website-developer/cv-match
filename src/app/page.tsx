@@ -1,13 +1,43 @@
 "use client";
+import { z } from "zod";
+
+import { MatchResultSchema } from "@/lib/schemas";
 
 import { useState } from "react";
+import { useEffect } from "react";
+
+type MatchResult = z.infer<typeof MatchResultSchema>;
+
+
+
+
+
+
 
 export default function Home() {
+
+  function getBarColor(pct: number) {
+  if (pct < 50) return "bg-red-500";
+  if (pct < 70) return "bg-yellow-500";
+  return "bg-green-500";
+}
+
+  const [result, setResult] = useState<MatchResult | null>(null);
+  useEffect(() => {
+  if(result){
+    const timer = setTimeout(() => setBarWidth(result.matchPercentage), 50);
+    return () => clearTimeout(timer);
+  } else {
+    setBarWidth(0);
+  }
+}, [result]);
+  const [barWidth, setBarWidth] = useState(0);
   const[cv, setcv] = useState("");
   const[jd, setjd] = useState("");
-  const [result, setResult] = useState("");
   const [loading, setLoading] = useState(false);
 const [error, setError] = useState("");
+
+
   const handleSubmit = async function(e: React.FormEvent){
     e.preventDefault();
     setLoading(true);
@@ -29,7 +59,10 @@ const [error, setError] = useState("");
     
   }
   return (
+    
+    
     <main className="min-h-screen items-center justify-center p-8">
+      <div className={loading ? "" : "fixed inset-0 z-50 bg-black/50 flex items-center justify-center"}></div>
       <div className="text-center pt-4">
         <h1 className="text-4xl font-bold mb-4">CV Match</h1>
         <p className="text-lg text-gray-600">
@@ -45,6 +78,42 @@ const [error, setError] = useState("");
 </form>
 <p>{loading ? "Analyzing" : ""}</p>
 <p>{error? error : ""}</p>
+
+
+{result &&
+<div className="text-left absolute z-99 top-[20%] bg-white rounded-md border border-[#fefefe] p-4 left-auto right-auto w-[90%] max-h-[500px] overflow-y-scroll">
+<div className="w-[300px]">
+  <div className={`h-4 rounded-full transition-all duration-1000 ease-out w-full bg-[#ccc]`}>
+  <div 
+    className={`h-4 rounded-full transition-all duration-1000 ease-out ${getBarColor(result.matchPercentage)}`}
+    style={{ width: `${barWidth}%` }}
+  /></div><p>{result.matchPercentage} %</p>
+</div>
+<h3 className="mt-4 text-left font-bold text-[26px]">Summary</h3>
+
+{result?.summary}
+
+<h3 className="mt-4 text-left font-bold text-[26px]">Matching Skills</h3>
+<ul className="list-disc list-inside">
+  {result?.matchedSkills.map((match) => {
+    return <li>{match}</li>
+  })}
+</ul>
+
+<h3 className="mt-4 text-left font-bold text-[26px]">Skills Which Are Lacking</h3>
+
+<ul className="list-disc list-inside">
+  {
+    result.missingSkills.map((match) => {
+      return <li>{match}</li>;
+    })
+  }
+</ul>
+</div>
+}
+
+
+
       </div>
     </main>
   );
