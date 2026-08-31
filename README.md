@@ -4,9 +4,7 @@ An AI-powered tool that analyses a CV against a job description and returns a ma
 
 **Live:** [cvmatch.syedsajidali.dev](https://cvmatch.syedsajidali.dev)
 
-<!-- TODO: add your screenshot here. Put the image in a /screenshots folder and reference it:
-![CV Match result](screenshots/result.png)
--->
+![CV Match result](screenshots/cv-matcher.png)
 
 ---
 
