@@ -63,7 +63,7 @@ const [error, setError] = useState("");
   return (
     
     
-    <main className="min-h-screen items-center justify-center p-8">
+    <main className="min-h-screen items-center justify-center pt-8">
       <div className={result ? "fixed inset-0 z-50 bg-black/50 flex items-center justify-center" : ""}></div>
       <div className="text-center pt-4">
         <h1 className="text-4xl font-bold mb-4">CV Match</h1>
@@ -73,10 +73,10 @@ const [error, setError] = useState("");
 
 <form className="bg-[#f6f3f6] p-5 py-6 mt-4" onSubmit={handleSubmit}>
   <div className="md:flex  radius-md md:justify-between">
-    <textarea className="p-2 border bg-white w-[48%] rounded-md border-[#f2f2f2] focus:border-[#ccc] min-h-[500px]" value={cv} placeholder="Enter Your Cv" onChange={(e) => setcv(e.target.value)}></textarea>
-    <textarea className="p-2 border bg-white w-[48%] rounded-md border-[#f2f2f2] focus:border-[#ccc]" value={jd} placeholder="Enter JD" onChange={(e) => setjd(e.target.value)}></textarea>
+    <textarea className="p-2 border bg-white md:w-[48%] rounded-md border-[#f2f2f2] focus:border-[#ccc] min-h-[300px] md:min-h-[500px]" value={cv} placeholder="Enter Your Cv" onChange={(e) => setcv(e.target.value)}></textarea>
+    <textarea className="p-2 border bg-white md:w-[48%] rounded-md border-[#f2f2f2] focus:border-[#ccc] min-h-[300px] md:min-h-[500px]" value={jd} placeholder="Enter JD" onChange={(e) => setjd(e.target.value)}></textarea>
   </div>
-    <button className="bg-green-500 hover:bg-green-700 rounded-md px-3 py-2 text-[#fff] mt-5" disabled={loading} type="submit">Submit</button>
+    <button className="bg-green-500 hover:bg-green-700 rounded-md px-5 py-2 text-[#fff] mt-5 cursor-pointer" disabled={loading} type="submit">Submit</button>
 </form>
 <p>{loading ? "Analyzing" : ""}</p>
 <p>{error? error : ""}</p>
